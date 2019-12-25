@@ -28,10 +28,10 @@ def to_file(filename, tuples, is_entity):
     with open(filename, mode="a", encoding="utf-8", errors="ignore", ) as f:
         if is_entity:
             for s, p, o in tuples:
-                f.write(f"e:{s}\ta:{p}\t\"{o}\"\n")
+                f.write(f"e:{s}\ta:{p}\t\"{o}\".\n")
         else:
             for s, p, o in tuples:
-                f.write(f"e:{s}\ta:{p}\te:{o}\n")
+                f.write(f"e:{s}\ta:{p}\te:{o}.\n")
 
 
 def sep_tag(elems, split_pattern):
