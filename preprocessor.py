@@ -275,7 +275,7 @@ class Preprocessor():
 os.chdir(os.getcwd())
 data_path = os.path.join(os.getcwd(),'raw_data')
 output_path = os.path.join(os.getcwd(),'preprocessed_data')
-if os.path.exists(output_path)==False:
+if not os.path.exists(output_path):
     os.mkdir(output_path)
     
 parser = MyHTMLParser()
