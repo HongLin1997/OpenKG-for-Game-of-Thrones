@@ -1,0 +1,40 @@
+PREFIX	r:	<http://kg.course/action/>
+PREFIX	e:	<http://kg.course/entity/>
+SELECT COUNT(*)
+WHERE {
+    ?s ?r ?o.
+}
+
+# 找出所有一级实体
+SELECT DISTINCT ?s
+WHERE {
+    ?s ?r ?o.
+  MINUS{?s r:name ?o}
+}
+
+# 删除原著书目、第*季
+PREFIX	r:	<http://kg.course/action/>
+PREFIX	e:	<http://kg.course/entity/>
+DELETE WHERE {?s r:原著書目 ?o.};
+DELETE WHERE {?s r:原著书目 ?o.};
+DELETE WHERE {?s r:出场季数 ?o.};
+DELETE WHERE {?s r:出场集数 ?o.};
+DELETE WHERE {?s r:提及集数 ?o.};
+DELETE WHERE {?s r:演员 ?o.};
+DELETE WHERE {?s r:第一季 ?o.};
+DELETE WHERE {?s r:第二季 ?o.};
+DELETE WHERE {?s r:第三季 ?o.};
+DELETE WHERE {?s r:第四季 ?o.};
+DELETE WHERE {?s r:第五季 ?o.};
+DELETE WHERE {?s r:第六季 ?o.};
+DELETE WHERE {?s r:第七季 ?o.};
+DELETE WHERE {?s r:第八季 ?o.};
+
+# 查出所有literal的实体
+PREFIX	r:	<http://kg.course/action/>
+PREFIX	e:	<http://kg.course/entity/>
+SELECT ?o
+WHERE {
+    ?s ?r ?o.
+  FILTER isLiteral(?o)
+}
