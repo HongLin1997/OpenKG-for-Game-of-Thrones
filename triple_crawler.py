@@ -1,3 +1,5 @@
+import certifi
+import pyhanlp
 import os
 import pickle
 import urllib3
@@ -31,7 +33,9 @@ INCRE_PATH = "triples/incremental files"
 
 
 def clean_text(s):
-    s = re.sub(r"[^\x00-\xff\u4E00-\u9FA5]", "", s)  # 去掉不是英文也不是中文的奇怪符号
+    # 去掉不是英文也不是中文的奇怪符号
+    # 保留？！、；，（）《》“”
+    s = re.sub(r"[^\x00-\xff\u4E00-\u9FA5\uff1f\uff01\u3001\uff1b\uff0c\uff08\uff09\u300a\u300b\u201d\u201c]", "", s)
     # 复合的符号
     s = re.sub(r"\+/-", "约", s)
     s = re.sub(r"^~", "约", s)
@@ -106,7 +110,7 @@ def sparql_result2file(results, filename, **kwargs):
     with open(filename, mode="w", **kwargs) as f:
         f.write("@prefix r:<http://kg.course/action/>.\n"
                 "@prefix e:<http://kg.course/entity/>.\n")
-    triple2file(triples, filename,  mode="a", **kwargs)
+    triple2file(triples, filename, mode="a", **kwargs)
 
 
 def apply_xpath2url(url: str, xpath: str):
@@ -116,7 +120,7 @@ def apply_xpath2url(url: str, xpath: str):
     :param xpath:
     :return:
     """
-    http = urllib3.PoolManager()
+    http = urllib3.PoolManager(ca_certs=certifi.where())
     page = http.request('GET', url).data.decode('utf-8')
     doc = etree.HTML(page)
     return doc.xpath(xpath)
@@ -171,7 +175,7 @@ def get_info(name: str, url: str, category_name):
     xpath = "//div[contains(concat(' ', @id, ' '), concat(' ','mw-content-text',' '))]" \
             "//*[contains(@class, 'infobox')]"
     data = apply_xpath2url(url, xpath)
-    ER.add_entity(name, category_name)
+    ER.add_entity(clean_text(name), category_name)
     for i in data:
         # 获取一个属性
         infobox_labels = i.xpath(".//*[contains(@class, 'infobox-label')]")
@@ -181,7 +185,7 @@ def get_info(name: str, url: str, category_name):
             o = sep_tag(o, r"<br>|<br/>")
             # 一个属性有多个属性值
             for o_ in o:
-                ER.add_entity(o_, "secondary_entity")
+                ER.add_entity(clean_text(o_), "secondary_entity")
                 ret.append((f"e:{clean_text(name)}", f"r:{clean_text(p)}", f"e:{clean_text(o_)}"))
     return ret
 
@@ -204,6 +208,14 @@ def get_index_main():
     dict2file(castle_index, f"triples/{category_name}_index.pkl", 1, mode="wb")
 
 
+def add_index(name, url, category):
+    with open(f"triples/{category}_index.pkl", mode="rb") as f:
+        name2url = pickle.load(f)
+        name2url[name] = url
+        dict2file(name2url, f"triples/{category}_index", 0, mode="w", encoding="utf-8", errors="ignore")
+        dict2file(name2url, f"triples/{category}_index.pkl", 1, mode="wb")
+
+
 def get_info_main():
     with open(os.path.join(INCRE_PATH, "asoif.ttl"), mode="w", encoding="utf-8", errors="ignore") as f:
         f.write("@prefix r:<http://kg.course/action/>.\n"
@@ -216,7 +228,8 @@ def get_info_main():
                 print(f"get {n}'s info")
                 kg = get_info(n, u, c)
                 if len(kg) < 1:
-                    with open(os.path.join(INCRE_PATH, "no_triples.log"), mode="a", encoding="utf-8", errors="ignore") as f:
+                    with open(os.path.join(INCRE_PATH, "no_triples.log"), mode="a", encoding="utf-8",
+                              errors="ignore") as f:
                         f.write(f"{n}: {u}\n")
                 triple2file(kg, os.path.join(INCRE_PATH, "asoif.ttl"), mode="a", encoding="utf-8", errors="ignore")
     entities_kg = ER.form_entity_tuples()
@@ -268,6 +281,35 @@ def sparql_del_triple(s, p, o):
             f.write(f"{e}\n")
 
 
+def sparql_get_all_entity(category=None):
+    sparql = SPARQLWrapper("http://localhost:3030/testds/sparql")
+    if category:
+        sparql.setQuery(
+            f"""
+                PREFIX	r:	<http://kg.course/action/>
+                PREFIX	e:	<http://kg.course/entity/>
+                SELECT DISTINCT ?s
+                WHERE {{
+                    ?s r:type "{category}".
+                }}
+            """
+        )
+    else:
+        sparql.setQuery(
+            f"""
+                PREFIX	r:	<http://kg.course/action/>
+                PREFIX	e:	<http://kg.course/entity/>
+                SELECT DISTINCT ?s
+                WHERE {{
+                    ?s r:name ?o.
+                }}
+            """
+        )
+    sparql.setReturnFormat(JSON)
+    results = sparql.query().convert()
+    return [squeeze_result(r["s"]) for r in results["results"]["bindings"]]
+
+
 def sparql_get_name(e):
     sparql = SPARQLWrapper("http://localhost:3030/testds/sparql")
     sparql.setQuery(
@@ -283,6 +325,25 @@ def sparql_get_name(e):
     sparql.setReturnFormat(JSON)
     results = sparql.query().convert()
     return results["results"]["bindings"][0]["o"]["value"]
+
+
+def sparql_get_representation(e):
+    sparql = SPARQLWrapper("http://localhost:3030/testds/sparql")
+    sparql.setQuery(
+        f"""
+            PREFIX	r:	<http://kg.course/action/>
+            PREFIX	e:	<http://kg.course/entity/>
+            SELECT DISTINCT ?o
+            WHERE{{
+                {{{e} r:name ?o}}
+                UNION{{{e} r:别名 ?o}}
+                UNION{{{e} r:名 ?o}}
+            }}
+        """
+    )
+    sparql.setReturnFormat(JSON)
+    results = sparql.query().convert()
+    return [squeeze_result(r["o"]) for r in results["results"]["bindings"]]
 
 
 def eliminate_entity(e):
@@ -328,6 +389,11 @@ def sparql_all2file():
 
 
 def clean_triples():
+    """
+    需要先使用get_info_main抓取三元组, 并启动fuseki服务器载入
+    去掉secondary entity
+    :return:
+    """
     sparql = SPARQLWrapper("http://localhost:3030/testds/sparql")
     sparql.setQuery(
         """
@@ -369,9 +435,137 @@ def get_all_literal(filename, **kwargs):
             f.write(f"{l}\n")
 
 
+def add_firstname_last_name():
+    sparql = SPARQLWrapper("http://localhost:3030/testds/sparql")
+    sparql.setQuery(
+        """
+        PREFIX	r:	<http://kg.course/action/>
+        PREFIX	e:	<http://kg.course/entity/>
+        SELECT DISTINCT ?s ?o
+        WHERE {
+            ?s r:name ?o.
+            FILTER EXISTS{?s r:type "character"}
+        }
+        """
+    )
+    sparql.setReturnFormat(JSON)
+    results = sparql.query().convert()["results"]["bindings"]
+    for result in results:
+        s = squeeze_result(result["s"])
+        o = result["o"]["value"]
+        print(s, o)
+        name_list = o.split("·")
+        sparql_add_triple(s, "r:名", "\"" + name_list[0] + "\"")
+        if len(name_list) > 1:
+            sparql_add_triple(s, "r:姓", "\"" + name_list[1] + "\"")
+
+
+def match_literal(entity, word):
+    sparql = SPARQLWrapper("http://localhost:3030/testds/sparql")
+    sparql.setQuery(
+        f"""
+            PREFIX	r:	<http://kg.course/action/>
+            PREFIX	e:	<http://kg.course/entity/>
+            SELECT DISTINCT ?s ?r ?o
+            WHERE {{
+                ?s ?r ?o.
+                MINUS {{?s r:type ?o}}
+                MINUS {{?s r:name ?o}}
+                MINUS {{?s r:名 ?o}}
+                MINUS {{?s r:别名 ?o}}
+                MINUS {{{entity} ?r ?o}}
+                FILTER regex(str(?r), "继承|继任|父亲|母亲|子嗣|兄弟姐妹")
+                FILTER regex(?o, "^{word}$")
+            }}
+            """
+    )
+    sparql.setReturnFormat(JSON)
+    results = sparql.query().convert()
+    return [(squeeze_result(result["s"]),
+             squeeze_result(result["r"]),
+             squeeze_result(result["o"]))
+            for result in results["results"]["bindings"]]
+
+
+def refine_literals():
+    """
+    把可以对应实体的literal找出来
+    :return:
+    """
+    entities = sparql_get_all_entity("character")
+    for i, e in enumerate(entities):
+        alias = sparql_get_representation(e)
+        for a in alias:
+            a = a.strip("\"")
+            matched_triple = match_literal(e, f"{a}.*")
+            for t in matched_triple:
+                print("用实体", e, f"替换掉", t, f"中的{t[2]}?({i}/{len(entities)})")
+                input_signal = input()
+                if input_signal == "":
+                    pass
+                else:
+                    sparql_add_triple(t[0], t[1], e)
+                    sparql_del_triple(t[0], t[1], t[2])
+
+
+def to_simplified_chinese(in_filename, out_filename):
+    with open(out_filename, mode="w", encoding="utf-8", errors="ignore") as outfile:
+        with open(in_filename, mode="r", encoding="utf-8", errors="ignore") as infile:
+            for l in infile.readlines():
+                outfile.write(pyhanlp.HanLP.convertToSimplifiedChinese(l))
+
+
+def change_relation_name(original_rname, changed_rname):
+    """
+    把原来称为original_rname的关系改为changed_rname
+    :param original_rname:
+    :param changed_rname:
+    :return:
+    """
+    sparql = SPARQLWrapper("http://localhost:3030/testds/sparql")
+    sparql.setQuery(
+        f"""
+            PREFIX	r:	<http://kg.course/action/>
+            PREFIX	e:	<http://kg.course/entity/>
+            SELECT DISTINCT *
+            WHERE {{
+                ?s {original_rname} ?o.
+            }}
+        """
+    )
+    sparql.setReturnFormat(JSON)
+    results = sparql.query().convert()
+    sparql = SPARQLWrapper("http://localhost:3030/testds/update")
+    try:
+        sparql.setQuery(
+            f"""
+                PREFIX	r:	<http://kg.course/action/>
+                PREFIX	e:	<http://kg.course/entity/>
+                DELETE WHERE{{?s {original_rname} ?o.}}
+            """
+        )
+        sparql.method = "POST"
+        sparql.query()
+    except BaseException as e:
+        with open(os.path.join(INCRE_PATH, "sparqlerror.log"), mode="a", encoding="utf-8", errors="ignore") as f:
+            f.write(f"{e}\n")
+    for r in results["results"]["bindings"]:
+        sparql_add_triple(squeeze_result(r["s"]), changed_rname, squeeze_result(r["o"]))
+
+
 if __name__ == "__main__":
     # get_index_main()
     # get_info_main()
     # clean_triples()
     # sparql_all2file()
-    get_all_literal("literal_vocabulary", mode="w", encoding="utf-8", errors="ignore")
+    # get_all_literal("literal_vocabulary", mode="w", encoding="utf-8", errors="ignore")
+    # add_firstname_last_name()
+    # sparql_all2file()
+    # refine_literals()
+    # sparql_all2file()
+    # to_simplified_chinese("triples/asoif.2001030820.ttl", "triples/asoif.2001030820-s.ttl")
+    # change_relation_name("r:继承者", "r:继承人")
+    # change_relation_name("r:王后", "r:配偶")
+    # change_relation_name("r:丈夫", "r:配偶")
+    sparql_all2file()
+    pass
