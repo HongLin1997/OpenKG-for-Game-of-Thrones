@@ -108,7 +108,7 @@ class Preprocessor():
                 print('SolrError: key-<%s> of <%s> is missing. '%(e,item['id'])) # skip this error (no valid text is pumped into the pipe)
                 next
 
-        print("Process: %s records are tokenized."%(len(tok)))
+        #print("Process: %s records are tokenized."%(len(tok)))
         self.tokenObj = tok
     
     def EnumPathFiles(self, path):
@@ -284,7 +284,7 @@ class Preprocessor():
             f.close()
               
         # -----
-        print("""Process: annotation tokens are ready, \n \t see <%s> in [%s]."""%(name,path))
+        # print("""Process: annotation tokens are ready, \n \t see <%s> in [%s]."""%(name,path))
 
 def main():   
     os.chdir(os.getcwd())
@@ -292,15 +292,18 @@ def main():
     output_path = os.path.join(os.getcwd(),'preprocessed_data')
 
     #characters = pickle.load(open(output_path + '/characters.pkl','rb'))
-    with open(output_path +'/literal_vocabulary','r', encoding='utf-8') as f:
-        characters = [i.strip() for i in f.readlines()]
-    #characters_att = pickle.load(open(output_path + '/characters_att.pkl','rb'))
-    for cs in characters:
-        for i,c in enumerate(cs.split("·")):
-            if "·" in cs and i ==0:
-                CustomDictionary.insert(cs, "人物 1024")
-            CustomDictionary.insert(c, "人物 1024")
     
+    with open(output_path +'/literal_vocabulary','r', encoding='utf-8') as f:
+        lines = f.readlines()
+        characters = [i.strip().split(":")[1] for i in lines]
+        tag = [i.strip().split(":")[0] for i in lines]
+    #characters_att = pickle.load(open(output_path + '/characters_att.pkl','rb'))
+    for t, cs in zip(tag, characters):
+        print(cs, t)
+        if t=='true_entity':
+            CustomDictionary.insert(cs, t+" 2048")
+        else:
+            CustomDictionary.insert(cs, t+" 1024")
     with open(data_path + '/stopwords/哈工大停用词表.txt','r',
           encoding="utf-8") as f:
         stopwords = [s.strip() for s in f.readlines()]
