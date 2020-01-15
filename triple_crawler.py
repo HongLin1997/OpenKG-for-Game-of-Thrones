@@ -42,17 +42,12 @@ def clean_text(s):
     s = re.sub(r"\[\d+\]", "", s)
     s = re.sub(r"<>", "、", s)
     # 英文标点
-    s = re.sub(r"\.", "", s)
-    s = re.sub(r",", "，", s)
-    s = re.sub(r";", "；", s)
+    s = re.sub(r"[(“]", "（", s)
+    s = re.sub(r"[)”]", "）", s)
+    s = re.sub(r"[.'\"]", "。", s)
+    s = re.sub(r"[,;]", "。", s)
+    s = re.sub(r"\\", "。", s)
     s = re.sub(r"\?", "？", s)
-    s = re.sub(r"\(", "（", s)
-    s = re.sub(r"\)", "）", s)
-    s = re.sub(r"\"", "", s)
-    s = re.sub(r"'", "", s)
-    s = re.sub(r"“", "《", s)
-    s = re.sub(r"”", "》", s)
-    s = re.sub(r"\\", "、", s)
     s = re.sub(r"[/|]", "、", s)
     s = re.sub(r"[-~]", "至", s)
     # 空白
@@ -67,17 +62,35 @@ def sep_tag(elems, split_pattern):
     :param split_pattern: 切割所使用的正则表达式
     :return: list of str, 每个字符串都经过清洗
     """
-    ret = []
-    e_str = re.split(split_pattern, etree.tostring(elems).decode('utf-8'))
-    for s in e_str:
+    ret = [""]
+    url_head = "https://asoiaf.huijiwiki.com"
+    # e_str = re.split(split_pattern, etree.tostring(elems).decode('utf-8'))
+    elems = etree.HTML(etree.tostring(elems).decode('utf-8'))
+    for s in elems.xpath("//body/*/text()|//body/*/*"):
         try:
-            s = "".join(etree.HTML(s).xpath("//text()")).strip()
-            s = clean_text(s)
-            if not re.fullmatch(r"\s*", s):
-                ret.append(s)
-        except:
-            pass
-    return ret
+            if isinstance(s, str):
+                # 访问到字符串元素
+                if not re.fullmatch(r"\s*", s):
+                    ret[-1] += clean_text(s)
+            else:
+                if s.tag == "br":
+                    ret.append("")
+                elif s.tag == "a":
+                    if "new" in s.xpath("@class"):
+                        ret[-1] += clean_text("".join(s.xpath(".//text()")))
+                    else:
+                        ret[-1] += get_header(url_head + s.xpath("@href")[0])
+                else:
+                    ret[-1] += clean_text("".join(s.xpath(".//text()")))
+        except BaseException as e:
+            print(e)
+    # 清理空字符串，分割逗号
+    ret_copy = []
+    for item in ret:
+        if item != "":
+            # ret_copy += [*item.split("，")]
+            ret_copy.append(item)
+    return ret_copy
 
 
 def dict2file(dict_: dict, filename: str, filetype: int, **kwargs):
@@ -133,6 +146,14 @@ def apply_xpath2element(elem, xpath: str):
 def extract_text(elem):
     text = "".join(elem.xpath(".//text()")).strip()
     return text
+
+
+def get_header(url: str):
+    if "#" in url:
+        url, loc_id = url.split("#")
+        return "".join(apply_xpath2url(url, f"//*[@id='{loc_id}']//text()"))
+    else:
+        return "".join(apply_xpath2url(url, f"//article//h1//text()"))
 
 
 def get_index_pages(begin_url: str, n_of_page: int, category: str):
@@ -217,7 +238,7 @@ def add_index(name, url, category):
 
 
 def get_info_main():
-    with open(os.path.join(INCRE_PATH, "asoif.ttl"), mode="w", encoding="utf-8", errors="ignore") as f:
+    with open(os.path.join(INCRE_PATH, "asoiaf.ttl"), mode="w", encoding="utf-8", errors="ignore") as f:
         f.write("@prefix r:<http://kg.course/action/>.\n"
                 "@prefix e:<http://kg.course/entity/>.\n")
     category_names = ["character", "house", "castle"]
@@ -231,9 +252,9 @@ def get_info_main():
                     with open(os.path.join(INCRE_PATH, "no_triples.log"), mode="a", encoding="utf-8",
                               errors="ignore") as f:
                         f.write(f"{n}: {u}\n")
-                triple2file(kg, os.path.join(INCRE_PATH, "asoif.ttl"), mode="a", encoding="utf-8", errors="ignore")
+                triple2file(kg, os.path.join(INCRE_PATH, "asoiaf.ttl"), mode="a", encoding="utf-8", errors="ignore")
     entities_kg = ER.form_entity_tuples()
-    triple2file(entities_kg, os.path.join(INCRE_PATH, "asoif.ttl"), mode="a", encoding="utf-8", errors="ignore")
+    triple2file(entities_kg, os.path.join(INCRE_PATH, "asoiaf.ttl"), mode="a", encoding="utf-8", errors="ignore")
 
 
 def squeeze_result(res):
@@ -554,18 +575,21 @@ def change_relation_name(original_rname, changed_rname):
 
 
 if __name__ == "__main__":
+    # get_info("艾德·史塔克", "https://asoiaf.huijiwiki.com/wiki/%E8%89%BE%E5%BE%B7%C2%B7%E5%8F%B2%E5%A1%94%E5%85%8B", "character")
+    # get_info("阿大克·汉博利", "https://asoiaf.huijiwiki.com/wiki/%E9%98%BF%E5%A4%A7%E5%85%8B%C2%B7%E6%B1%89%E5%8D%9A%E5%88%A9", "character")
+    # get_all_literal("literal_vocabulary", mode="w", encoding="utf-8", errors="ignore")
+    # refine_literals()
     # get_index_main()
     # get_info_main()
+    # to_simplified_chinese("triples/incremental files/asoiaf.ttl", "triples/incremental files/asoiaf-s.ttl")
+    # 启动fuseki后运行下面文件
     # clean_triples()
-    # sparql_all2file()
-    # get_all_literal("literal_vocabulary", mode="w", encoding="utf-8", errors="ignore")
     # add_firstname_last_name()
-    # sparql_all2file()
-    # refine_literals()
-    # sparql_all2file()
-    # to_simplified_chinese("triples/asoif.2001030820.ttl", "triples/asoif.2001030820-s.ttl")
-    # change_relation_name("r:继承者", "r:继承人")
     # change_relation_name("r:王后", "r:配偶")
     # change_relation_name("r:丈夫", "r:配偶")
+    # change_relation_name("r:继承者", "r:继承人")
+    # change_relation_name("r:信仰", "r:宗教")
+    # change_relation_name("r:家传武器", "r:祖传武器")
+    # change_relation_name("r:文化", "r:种族")
     sparql_all2file()
     pass

@@ -182,10 +182,10 @@ if __name__ == "__main__":
     # a = NLPTokenizer.segment(sentence)
     # b = NLPTokenizer.analyze(sentence)
     # c = NLPTokenizer.analyze(sentence).translateLabels()
-    # inFilename = "processed_data/preprocessed_data.jsonl"
-    # outFilename = "processed_data/preprocessed_data_with_entity_v1.jsonl"
-    # matchedEntity = add_entity2sentence(inFilename, outFilename)
-    # unmatchedEntity = unmatched_entity(matchedEntity)
+    inFilename = "processed_data/preprocessed_data.jsonl"
+    outFilename = "processed_data/preprocessed_data_with_entity_v2.jsonl"
+    matchedEntity = add_entity2sentence(inFilename, outFilename)
+    unmatchedEntity = unmatched_entity(matchedEntity)
     # with open("match", mode="a", encoding="utf-8") as f:
     #     for e in matchedEntity:
     #         f.write(e+"\n")
@@ -197,5 +197,5 @@ if __name__ == "__main__":
     # num_sentence = 0
     # num_matched_word = [len(s["entity"])
     #                     for s in sentence_generator("processed_data/preprocessed_data_with_entity_v1.jsonl")]
-    entity2sentence("processed_data/preprocessed_data_with_entity_v1.jsonl",
-                    "processed_data/entity2sentence_v1.pkl")
+    entity2sentence("processed_data/preprocessed_data_with_entity_v2.jsonl",
+                    "processed_data/entity2sentence_v2.pkl")

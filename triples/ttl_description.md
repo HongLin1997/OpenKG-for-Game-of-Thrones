@@ -168,3 +168,33 @@ WHERE{
 
 ##### triples/asoif.2001042058.ttl
 使用processed_data/candidate_entity_replacement_list_v6.jsonl进行实体替换
+
+##### triples/asoif.2001061704.ttl
+在triples/asoif.2001020836.ttl的基础上。
+- `r:信仰` ->`r:宗教`
+- `r:家传武器"` -> `r:祖传武器`
+- `r:文化` -> `r:种族`
+
+
+##### asoiaf.2001082233.ttl
+修改了sep_tag函数，使得可以去寻找链接对应的名称
+
+##### asoiaf-s.2001082233.ttl
+在asoiaf.2001082233.ttl的基础上，繁体字改为简体字
+
+##### asoif.2001082309.ttl
+在asoiaf-s.2001082233.ttl的基础上，清除secondary entity
+
+##### asoif.2001082310.ttl
+在asoif.2001082309.ttl的基础上，
+去除关系原著書目\原著书目、第*季、出场集数、出场季数、提及集数。
+增加名和姓
+- `r:王后` -> `r:配偶`
+- `r:继承者` -> `r:继承人`
+- `r:丈夫` -> `r:配偶`
+- `r:信仰` ->`r:宗教`
+- `r:家传武器"` -> `r:祖传武器`
+- `r:文化` -> `r:种族`
+
+##### asoif.2001090824.ttl
+在asoif.2001082310.ttl的基础上，去掉全英文的元组

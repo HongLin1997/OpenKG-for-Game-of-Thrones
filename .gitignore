@@ -132,6 +132,7 @@ dmypy.json
 .idea/
 
 # data
+*.csv
 *.jsonl
 *.ttl
 *.pkl

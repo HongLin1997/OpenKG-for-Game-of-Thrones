@@ -1,3 +1,4 @@
+import collections
 import json
 import sqlite3
 import pickle
@@ -6,10 +7,14 @@ import pickle
 from SPARQLWrapper import SPARQLWrapper, JSON
 
 SentenceFile = "processed_data/preprocessed_data_with_entity_v1.jsonl"
-Entity2SentencesFile = "processed_data/entity2sentence_v1.pkl"
-EntityReplacementFile = "processed_data/candidate_entity_replacement_list_v5.jsonl"
+Entity2SentencesFile = "processed_data/entity2sentence_v1.pkl"  # 标注词语可能对应的实体的jsonl文件
+EntityReplacementFile = "processed_data/candidate_entity_replacement_list_v5.jsonl"  # 记录literal实体候选替换实体的jsonl文件
 SQLiteFile = "processed_data/weak_supervise.db"
-SuperviseDataFile = "processed_data/supervise_data_v2.jsonl"
+SuperviseDataFile = "supervise_data/tagged_corpus_with_candidate_v3.jsonl"  # 用于监督训练的数据的jsonl文件(带有句子分词等其他信息)
+SuperviseDataCSV = "supervise_data/tagged_corpus_with_candidate_v3.csv"  # 用于监督训练的数据的csv文件(可用于deepKE训练)
+HasRelationSuperviseDataCSV = "supervise_data/tagged_corpus_with_candidate_v3_has_relations.csv"  # 用于监督训练的数据的csv文件(可用于deepKE训练, 带有关系的数据样本)
+NoneRelationSuperviseDataCSV = "supervise_data/tagged_corpus_with_candidate_v3_None_relations.csv"  # 用于监督训练的数据的csv文件(可用于deepKE训练, 关系None的数据样本)
+
 
 def squeeze_result(res):
     if res["type"] == "uri":
@@ -84,8 +89,8 @@ def list2jsonl_file(dict_list, filename):
             f.write(json.dumps(i) + "\n")
 
 
-def jsonl_generator(filename):
-    with open(filename) as f:
+def jsonl_generator(filename, **kwargs):
+    with open(filename, **kwargs) as f:
         while True:
             line = f.readline()
             if line != "":
@@ -188,8 +193,31 @@ def instantiate_sentence_in_superivse_data(supervise_data):
 
 
 if __name__ == "__main__":
-    SuperviseData = construct_weak_supervise_data()
-    SuperviseData = sorted(SuperviseData, key=lambda x: x[0])
-    SuperviseData = instantiate_sentence_in_superivse_data(SuperviseData)
-
-    list2jsonl_file(SuperviseData, SuperviseDataFile)
+    # SuperviseData = construct_weak_supervise_data()
+    # SuperviseData = sorted(SuperviseData, key=lambda x: x[0])
+    # SuperviseData = instantiate_sentence_in_superivse_data(SuperviseData)
+    #
+    # list2jsonl_file(SuperviseData, SuperviseDataFile)
+    # == 把jsonl转换为deepKE的格式sentence, relation, head, head_offset, tail, tail_offset ==
+    HowToReadJSONL = {"mode": "r", "encoding": "utf-8", "errors": "ignore"}
+    RelationCnter = collections.Counter()
+    with open(SuperviseDataCSV, mode="w", encoding="utf-8", errors="ignore") as OutCSVFile:
+        for Item in jsonl_generator(SuperviseDataFile, **HowToReadJSONL):
+            OutCSVFile.write(",".join([Item["text"], str(Item["relation"]),
+                                       str(Item["ents"][0][0]), str(Item["ents"][0][2]),
+                                       str(Item["ents"][1][0]), str(Item["ents"][1][2])]) + "\n")
+            RelationCnter[str(Item["relation"])] += 1
+    # == 存在关系的样本写入一个文件 ==
+    with open(HasRelationSuperviseDataCSV, mode="w", encoding="utf-8", errors="ignore") as OutCSVFile:
+        for Item in jsonl_generator(SuperviseDataFile, **HowToReadJSONL):
+            if str(Item["relation"]) != "None":
+                OutCSVFile.write(",".join([Item["text"], str(Item["relation"]),
+                                           str(Item["ents"][0][0]), str(Item["ents"][0][2]),
+                                           str(Item["ents"][1][0]), str(Item["ents"][1][2])]) + "\n")
+    # == 不存在关系的样本写入一个文件 ==
+    with open(NoneRelationSuperviseDataCSV, mode="w", encoding="utf-8", errors="ignore") as OutCSVFile:
+        for Item in jsonl_generator(SuperviseDataFile, **HowToReadJSONL):
+            if str(Item["relation"]) == "None":
+                OutCSVFile.write(",".join([Item["text"], str(Item["relation"]),
+                                           str(Item["ents"][0][0]), str(Item["ents"][0][2]),
+                                           str(Item["ents"][1][0]), str(Item["ents"][1][2])]) + "\n")

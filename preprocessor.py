@@ -4,25 +4,55 @@ Created on Tue Dec 17 22:19:21 2019
 
 @author: admin
 """
-import os,re, json, datetime
+import os,re, json, datetime, pickle
 from html.parser import HTMLParser
-import jieba
+from pyhanlp import *
 
+NLPTokenizer = JClass('com.hankcs.hanlp.tokenizer.NLPTokenizer')
+CustomDictionary = JClass("com.hankcs.hanlp.dictionary.CustomDictionary")
+    
 class MyHTMLParser(HTMLParser):
     text = []
+    family = []
+    family_members = []
     chapter = ''
+    previous_data = None
+    id_ = 0
+    text_add = False
     def handle_starttag(self, tag, attrs):
+        if 'p' in tag or 'h2' in tag:
+            self.text_add = True 
         pass
-        #print("Encountered a start tag:", tag)
-
+    
     def handle_endtag(self, tag):
         if 'h2' in tag:
-            self.chapter = self.text[-1][1]
+            self.chapter = self.text[-1][2]
+        
         #print("Encountered an end tag :", tag)
 
     def handle_data(self, data):
+        if len(data.strip())>0 and self.text_add:
+            data = re.sub('<(.*?)>', "", data.strip())
+            self.text.append((self.id_, self.chapter, data))
+            self.id_ += 1
+            self.text_add = False 
+            
+        if len(data.strip())>0 and \
+           data.endswith('家族'):
+               self.family.append(data.strip())
+               
+        if data.strip().startswith('——') and len(data.strip())>3 and \
+           len(self.family)>0:
+               if len(self.family_members)==0 or \
+                  self.family_members[-1][0] != self.family[-1]:
+                      # new family
+                      self.family_members.append((self.family[-1], self.previous_data.strip()))
+                      
+               self.family_members.append((self.family[-1], data.strip()))
+               
         if len(data.strip())>0:
-            self.text.append((self.chapter, data.strip()))
+            self.previous_data = data
+        
         return data
 
 
@@ -51,11 +81,11 @@ class Preprocessor():
                 para = re.sub('\u3000', "", para)  # 空格
                 para = re.sub('\xa0', "", para)  # 空格
                 para = re.sub(' ', "", para)  # 空格
-                para = re.sub('([。！？\?])([^”’])', r"\1\n\2", para)  # 单字符断句符
+                #para = re.sub('([。！？\?])([^”’])', r"\1\n\2", para)  # 单字符断句符
                 #para = re.sub(';', r"\1\n\2", para)  # 单字符断句分号
-                para = re.sub('(\.{6})([^”’])', r"\1\n\2", para)  # 英文省略号
-                para = re.sub('(\…{2})([^”’])', r"\1\n\2", para)  # 中文省略号
-                para = re.sub('([。！？\?][”’])([^，。！？\?])', r'\1\n\2', para)
+                #para = re.sub('(\.{6})([^”’])', r"\1\n\2", para)  # 英文省略号
+                #para = re.sub('(\…{2})([^”’])', r"\1\n\2", para)  # 中文省略号
+                #para = re.sub('([。！？\?][”’])([^，。！？\?])', r'\1\n\2', para)
                 # 如果双引号前有终止符，那么双引号才是句子的终点，把分句符\n放到双引号后，注意前面的几句都小心保留了双引号
                 para = para.rstrip()  # 段尾如果有多余的\n就去掉它
                 # 很多规则中会考虑分号;，但是这里我把它忽略不计，破折号、英文双引号等同样忽略，需要的再做些简单调整即可。
@@ -78,7 +108,7 @@ class Preprocessor():
                 print('SolrError: key-<%s> of <%s> is missing. '%(e,item['id'])) # skip this error (no valid text is pumped into the pipe)
                 next
 
-        print("Process: %s records are tokenized."%(len(tok)))
+        #print("Process: %s records are tokenized."%(len(tok)))
         self.tokenObj = tok
     
     def EnumPathFiles(self, path):
@@ -105,12 +135,13 @@ class Preprocessor():
                 f.close()
                 self.parser.feed(data_)
                 for i in self.parser.text:
-                    data.append({'content':i[1],'chapter':i[0],
+                    data.append({'content':i[2],'chapter':i[1],
                                  'title':item.get("title")[0:-6],
-                                 'id':'none'})
+                                 'id':i[0]})
             
                 #data_= "".join([i[1] for i in self.parser.text])
                 self.parser.text = []
+                self.parser.id_ = 0
                 self.parser.chapter = ""
                 #data.append({'content':data_,'title':item.get("title")[0:-6],'id':'none'} )
             self.textObj = data
@@ -192,39 +223,16 @@ class Preprocessor():
                             #tk += [t]
                         else:
                             next
-                            
-                # keywords account for over 50% of all words in this passage
-                # 相关度
-                SNIP_LIMIT = 25
+                 
                 print("Process: [%s] in stack."%(self.tokenObj[i]['id']))
-                snippets += [{"title":self.tokenObj[i]['title'],
+                snippets += [{"id":self.tokenObj[i]['id'],
+                              "title":self.tokenObj[i]['title'],
                               "chapter":self.tokenObj[i]['chapter'],
                               "snip":re.sub('[\r\n\t\xa0]','',x),
-                              'tokens': list(jieba.cut(re.sub('[\r\n\t\xa0]','',x), 
-                                                  cut_all=False))} for x in tks if len(x)>=SNIP_LIMIT]
+                              'hanlp_tokens': [str(i).split("/")[0] for i in list(NLPTokenizer.segment(re.sub('[\r\n\t\xa0]','',x)))],
+                              'hanlp_pos': [str(i).split("/")[1] for i in list(NLPTokenizer.segment(re.sub('[\r\n\t\xa0]','',x)))]} for x in tks ]
                 
-                '''
-                if count/len(tks) >= 0.5: # relatively half 
-                    # set a threshold for informative snip:
-                    SNIP_LIMIT = 25
-                    print("Process: [%s] in stack."%(self.tokenObj[i]['id']))
-                    snippets += [{"title":self.tokenObj[i]['title'],"snip":re.sub('[\r\n\t\xa0]','',x)} for x in tks if len(x)>=SNIP_LIMIT]
-                else:
-                    # pump this passed records into a log: [filter_log]
-                    if "filter_log" not in os.listdir():
-                        f = open("filter_log",'w')
-                        f.close()
-                    else:
-                        if self.tokenObj[i]['id'] is not "none":
-                            with open('filter_log','a') as f:
-                                f.write("%s>>%s"%(self.time,self.tokenObj[i]['id']) + "\n")
-                            f.close()
-                            print("Process: [%s] is passed."%(self.tokenObj[i]['id']))
-
-                        else:
-                            pass
-                    next
-                '''
+                
         else:
             pass # remained: !!!!!
 
@@ -243,7 +251,10 @@ class Preprocessor():
                 for item in self.tokens:
                     # convert to .jsonl for prodigy's annotation:
                     if name.endswith('.json') or name.endswith('.jsonl'):
-                        sn = json.dumps({"text":item['snip'],"meta":{"source":item['title']}})
+                        sn = json.dumps({"text":item['snip'],
+                                         "meta":{"source":item['title'],
+                                                 "chapter":item['chapter'],
+                                                 'id': item['id']}})
                         f.write(sn + "\n")
                     else:
                         sn = item['snip']
@@ -259,8 +270,12 @@ class Preprocessor():
             with open(os.path.join(path, name),'w', encoding="utf-8") as f:
                 for item in self.tokens:
                     if name.endswith('.json') or name.endswith('.jsonl'):
-                        sn = json.dumps({"text":item['snip'], "tokens":item['tokens'], 
-                                         "meta":{"source":item['title']}})
+                        sn = json.dumps({"text":item['snip'], 
+                                         'hanlp_tokens': item['hanlp_tokens'],
+                                         'hanlp_pos': item['hanlp_pos'],
+                                         "meta":{"source":item['title'],
+                                                 "chapter":item['chapter'],
+                                                 'id': item['id']}})
                         f.write(sn + "\n")
                     else:
                         sn = item['snip']
@@ -269,22 +284,47 @@ class Preprocessor():
             f.close()
               
         # -----
-        print("""Process: annotation tokens are ready, \n \t see <%s> in [%s]."""%(name,path))
+        # print("""Process: annotation tokens are ready, \n \t see <%s> in [%s]."""%(name,path))
 
+def main():   
+    os.chdir(os.getcwd())
+    data_path = os.path.join(os.getcwd(),'raw_data')
+    output_path = os.path.join(os.getcwd(),'run_LH_code')
+
+    #characters = pickle.load(open(output_path + '/characters.pkl','rb'))
+
+    with open(output_path +'/literal_vocabulary','r', encoding='utf-8') as f:
+        lines = f.readlines()
+        characters = [i.strip().split(":")[1] for i in lines]
+        tag = [i.strip().split(":")[0] for i in lines]
+    #characters_att = pickle.load(open(output_path + '/characters_att.pkl','rb'))
+    for t, cs in zip(tag, characters):
+        print(cs, t)
+        if t=='true_entity':
+            CustomDictionary.insert(cs, t+" 2048")
+        else:
+            CustomDictionary.insert(cs, t+" 1024")
+    with open(data_path + '/stopwords/哈工大停用词表.txt','r',
+          encoding="utf-8") as f:
+        stopwords = [s.strip() for s in f.readlines()]
+
+    stopwords.append('…')
+    for s in stopwords:
+        CustomDictionary.insert(s, "stopwords 1024")
+        
+    if os.path.exists(output_path)==False:
+        os.mkdir(output_path)
+        
+    parser = MyHTMLParser()
     
-os.chdir(os.getcwd())
-data_path = os.path.join(os.getcwd(),'raw_data')
-output_path = os.path.join(os.getcwd(),'preprocessed_data')
-if not os.path.exists(output_path):
-    os.mkdir(output_path)
+    sentence_min_length = 5
+    proc = Preprocessor(parser, sentence_min_length) # solr starts by default:
     
-parser = MyHTMLParser()
+    proc.inputData(INPUT_PATH=data_path)
+    proc.tokenize()
+    proc.wordFilter()
+    proc.tokenAsAnnotation(path=output_path,
+                           name="preprocessed_data.jsonl")
 
-sentence_min_length = 5
-proc = Preprocessor(parser, sentence_min_length) # solr starts by default:
-
-proc.inputData(INPUT_PATH=data_path)
-proc.tokenize()
-proc.wordFilter()
-proc.tokenAsAnnotation(path=output_path,
-                       name="preprocessed_data.jsonl")
+if __name__ == "__main__":
+    main()
