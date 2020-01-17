@@ -161,8 +161,22 @@ e:提利昂·兰尼斯特	r:姓	"兰尼斯特".
 
 3. 利用根目录下的tag_entity.py文件对解析好的文件进行实体与三元组关系的标注，与实体对样本生成。特别注意的是，在该部分我们尝试了删除句子中的停用词的操作，但后来发现目前大部分的中文关系抽取的方法并没有对停用词进行处理，而且删除停用词可能会影响语义的连贯性，于是最终操作是并没有过滤停用词的。
 
-   我们对一句话中的所有识别到的nr（Hanlp中的人名标识）、true_entity以及candidate_entity三种类型的词语进行排列组合，使得每个样本只有一对实体。沿袭**远距离监督**的思想，如果这个实体对在我们网络爬虫爬到的关系三元组中存在对应的关系，我们将该样本标记为对应到的三元组关系。按照这样的思想，我们共得到了92592条实体对样本，其中, 840条被标注为有三元组关系的（共25种关系被匹配到，包括其反向关系，如父亲（e1,e2)与父亲（e2,e1))，91752条为没有找到网络数据匹配的三元组关系的(这部分为我们重点希望再抽取到新的三元组关系的），最终我们按照7:1:2的比例生成训练集，验证集以及测试集，存储于datasets/GOT/corpus_train.jsonl、datasets/GOT/corpus_dev.jsonl、datasets/GOT/corpus_eval.jsonl中。
+   我们对一句话中的所有识别到的nr（Hanlp中的人名标识）、true_entity以及candidate_entity三种类型的词语进行排列组合，使得每个样本只有一对实体。沿袭**远距离监督**的思想，如果这个实体对在我们网络爬虫爬到的关系三元组中存在对应的关系，我们将该样本标记为对应到的三元组关系。按照这样的思想，我们共得到了92592条实体对样本，其中, 840条被标注为有三元组关系的（共25种关系被匹配到，包括其反向关系，如父亲（e1,e2)与父亲（e2,e1))，91752条为没有找到网络数据匹配的三元组关系的(这部分为我们重点希望再抽取到新的三元组关系的），最终我们按照7:1:2的比例生成训练集，验证集以及测试集，存储于datasets/GOT/corpus_train.jsonl、datasets/GOT/corpus_dev.jsonl、datasets/GOT/corpus_eval.jsonl中。文件中每一行代表一个样本，一个实体对样本的格式如下：
    
+       {"text": "小说中的一段话（按xhtml中的<p></p>标签计算为一段话）", 
+        "hanlp_tokens":  hanlp分词list,
+        "hanlp_pos": hanlp分词标识（如nr, true_entity等词语类型）,
+        "meta": {"source": "句子来源文件名", 
+                      "chapter": "句子来源章节名", 
+                      "id": 顺序分配},
+        "token": 过滤的hanlp分词list, 
+        "filtered_pos": 过滤的hanlp分词标识, 
+        "ents": [[实体name文本, 实体标识（true_entity/candidate_entity/nr*\）, 分词list中index], 
+                 [实体name文本, 实体标识（true_entity/candidate_entity/nr*\）, 分词list中index]], 
+        "label": 关系标签id, 
+        "h": {"name": 头实体文本, "pos": [头实体起始位置, 头实体结束位置], "tag": 头实体标识（true_entity/candidate_entity/nr*\）},
+        "t": {"name": 尾实体文本, "pos": [尾实体起始位置, 尾实体结束位置], "tag": 尾实体标识（true_entity/candidate_entity/nr*\）}}
+
 #### 模型训练与新关系的抽取生成
 考虑到网络爬虫获得关系三元组能够在小说文本中匹配到的句子样本的数量非常有限；我们决定先利用数据量比较充足的CCKS人物关系抽取任务（https://biendata.com/competition/ccks_2019_ipre/）中的数据集fine-tune预训练的bert模型，使其具备关系抽取的能力；而后利用fine-tune好的bert模型测试在权力的游戏小说文本上，查看其能够抽取到的相关人物关系（此时所抽取的关系类型数量以及名称由训练数据集，即datasets/CCKS-IPRE文件夹下的相应train文件决定）。
 
