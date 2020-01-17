@@ -51,7 +51,7 @@ def del_triple(s, p, o):
             f.write(f"{e}\n")
 
 
-def list_all_entity():
+def list_all_nonliteral():
     sparql = SPARQLWrapper("http://localhost:3030/testds/sparql")
     sparql.setQuery(
         f"""
@@ -73,6 +73,61 @@ def list_all_entity():
     sparql.setReturnFormat(JSON)
     results = sparql.query().convert()
     return [squeeze_result(r["e"]) for r in results["results"]["bindings"]]
+
+
+def list_noliteral_triples():
+    sparql = SPARQLWrapper("http://localhost:3030/testds/sparql")
+    sparql.setQuery(
+        f"""
+            PREFIX	r:	<http://kg.course/action/>
+            PREFIX	e:	<http://kg.course/entity/>
+            SELECT DISTINCT *
+            WHERE {{
+                {{?s ?r ?o}}   
+                MINUS{{
+                    ?s ?r ?o
+                    FILTER isLiteral(?o)
+                }}
+            }}
+        """
+    )
+    sparql.setReturnFormat(JSON)
+    results = sparql.query().convert()
+    return [(squeeze_result(r["s"]), squeeze_result(r["r"]), squeeze_result(r["o"]))
+            for r in results["results"]["bindings"]]
+
+
+def get_all_entity(category=None):
+    """
+    获取所有实体
+    :return:
+    """
+    sparql = SPARQLWrapper("http://localhost:3030/testds/sparql")
+    if category is not None:
+        sparql.setQuery(
+            f"""
+                   PREFIX	r:	<http://kg.course/action/>
+                   PREFIX	e:	<http://kg.course/entity/>
+                   SELECT DISTINCT ?s
+                   WHERE{{
+                        {{?s r:type "{category}".}}
+                   }}
+               """
+        )
+    else:
+        sparql.setQuery(
+            f"""
+                           PREFIX	r:	<http://kg.course/action/>
+                           PREFIX	e:	<http://kg.course/entity/>
+                           SELECT DISTINCT ?s
+                           WHERE{{
+                                {{?s r:type ?o.}}
+                           }}
+                       """
+        )
+    sparql.setReturnFormat(JSON)
+    results = sparql.query().convert()["results"]["bindings"]
+    return sorted(list(set([squeeze_result(result["s"]) for result in results])))
 
 
 def relation_between_two_entity(e1, e2):
