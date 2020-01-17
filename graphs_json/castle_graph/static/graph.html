@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Games of Throne</title>
+        <title>Castles in Games of Throne</title>
     </head>
 
     <div id="d3-example"></div>
@@ -40,7 +40,7 @@
                 .attr("preserveAspectRatio", "xMidYMid meet")
                 .attr("viewBox", [0, 0, width, height])
             // We load the JSON file.
-            d3.json("/static/GOT_graph_None.json", function(error, graph){
+            d3.json("/static/GOT_graph_castle.json", function(error, graph){
                 // In this block, the file has been loaded
                 // and the 'graph' object contains our graph.
                 if (error) {
@@ -52,7 +52,7 @@
                 // We create a force-directed dynamic graph layout.
                 var simulation = d3.forceSimulation(graph.nodes)
                         .force('charge', d3.forceManyBody().strength(-5))
-                        // .force('collision', d3.forceCollide().radius(function(d){ return d.radius * 30 + 10}))
+                        .force('collision', d3.forceCollide().radius(function(d){ return d.radius * 30 + 10}))
                         .force('center', d3.forceCenter(width / 2, height / 2))
                         .force('link', d3.forceLink().links(graph.links))
                         .on('tick', ticked);
