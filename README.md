@@ -236,7 +236,7 @@ Windows 下使用 java 与 jena 包，java 版本为 12.0.2，jena 版本为 3.1
 
 下图是对所有家族实体进行pagerank以及谱聚类后的结果，可以进入`graphs_json\house_graph`文件夹后，在当前文件夹运行`python JS_graph.py`，之后访问`http://localhost:8000`可打开网页查看图谱。鼠标停留在圆上方可查看实体名称。
 
-<img src="img/image-20200117140441179.png" alt="image-20200117140441179" width="600" /> 、
+<img src="img/image-20200117140441179.png" alt="image-20200117140441179" width="600" /> <img src="img/house-animate.gif" alt="image-20200117140441179" width="600" /> 
 
 下图是对所有城堡实体进行pagerank以及谱聚类后的结果，可以进入`graphs_json\castle_graph`文件夹后，在当前文件夹运行`python JS_graph.py`，之后访问`http://localhost:8000`可打开网页查看图谱。鼠标停留在圆上方可查看实体名称。从图中可以看到，小说中各个城堡之间是没有直接链接的边的，城堡之间一般不会发生关系，都是通过家族或人物间接联系。
 
