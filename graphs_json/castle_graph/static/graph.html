@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Games of Throne</title>
+    </head>
+
+    <div id="d3-example"></div>
+    <style>
+        html,body{
+	        height: 100%;
+        }
+        circle { 
+            stroke: #000;
+        }
+        line { stroke: #ccc; }
+        text {
+            text-anchor: middle;
+            font-family: "Helvetica Neue", Helvetica, sans-serif;
+            fill: #666;
+            font-size: 16px;
+        }
+        svg{
+            height:100%;
+            width:100%;
+        }
+    </style>
+
+    <body>
+        <div id="content">
+            <svg>
+              <g class="links"></g>
+              <g class="nodes"></g>
+            </svg>
+        </div>
+        <script src="/static/d3.v4.min.js"></script>
+        <script>
+            var width = 5000, height = 5000;
+            var color = d3.scaleOrdinal(d3.schemeCategory10);
+            var svg = d3.select("svg")
+                .attr("preserveAspectRatio", "xMidYMid meet")
+                .attr("viewBox", [0, 0, width, height])
+            // We load the JSON file.
+            d3.json("/static/GOT_graph_None.json", function(error, graph){
+                // In this block, the file has been loaded
+                // and the 'graph' object contains our graph.
+                if (error) {
+                    return console.warn(error);
+                }
+                
+                // We load the nodes and links in the
+                // force-directed graph.
+                // We create a force-directed dynamic graph layout.
+                var simulation = d3.forceSimulation(graph.nodes)
+                        .force('charge', d3.forceManyBody().strength(-5))
+                        // .force('collision', d3.forceCollide().radius(function(d){ return d.radius * 30 + 10}))
+                        .force('center', d3.forceCenter(width / 2, height / 2))
+                        .force('link', d3.forceLink().links(graph.links))
+                        .on('tick', ticked);
+                return console.log(graph.nodes);
+                
+                function updateLinks() {
+                    var u = d3.select('.links')
+                            .selectAll('line')
+                            .data(graph.links);
+
+                    u.enter()
+                        .append('line')
+                        .merge(u)
+                        .attr('x1', function(d) { return d.source.x })
+                        .attr('y1', function(d) { return d.source.y })
+                        .attr('x2', function(d) { return d.target.x })
+                        .attr('y2', function(d) { return d.target.y });
+                    u.exit().remove();
+                }
+
+                function updateNodes() {
+                    u = d3.select('.nodes')
+                        .selectAll('circle')
+                        .data(graph.nodes);
+
+                    u.enter()
+                        .append('circle')
+                        .merge(u)
+                        .attr('r', function(d) { return d.radius * 30 + 10 })
+                        .attr('fill', function(d) { return d.color })
+                        .attr('cx', function(d) { return d.x })
+                        .attr('cy', function(d) { return d.y })
+                        .call(d3.drag()
+                            .on("start", dragstarted)
+                            .on("drag", dragged)
+                            .on("end", dragended));  
+                    u.append('title').text(function(d) { return d.name })
+                    u.exit().remove();
+                }
+
+                function ticked() {
+                    updateLinks();
+                    updateNodes();
+                }
+
+                function dragstarted(d) {
+                    if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+                    d.fx = d.x;
+                    d.fy = d.y;
+                }
+                
+                function dragged(d) {
+                    d.fx = d3.event.x;
+                    d.fy = d3.event.y;
+                }
+                
+                function dragended(d) {
+                    if (!d3.event.active) simulation.alphaTarget(0);
+                    d.fx = null;
+                    d.fy = null;
+                } 
+            });
+        </script>
+
+    </body>
+    
+
+<html>
