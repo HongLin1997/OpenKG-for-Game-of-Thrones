@@ -154,18 +154,33 @@ def eval_tgt(encoder, classifier, data_loader, source_flag = False):
         x[i]['ccks_pred_label']=ccks_id2relation.get(list(result[i,:]).index(1))
         predict_notNone_result+=[x[i]]
     
-    with open(os.path.join(params.model_root,'pred_notNoneCCKS_result.jsonl'),'w') as f:
+    with open(os.path.join(params.model_root,
+                           'source_%s_pred_notNoneCCKS_result.jsonl'%str(source_flag)),'w') as f:
         for item in predict_notNone_result:
             json.dump(item, f)
             f.write("\n")
             
     pred_triples=[]
+    pred_triples_notNR=[]
     for item in predict_notNone_result:
         pred_triples+=[{'e1':item['h']['name'],
                         'r':item['ccks_pred_label'],
                         'e2':item['t']['name']}]
-    with open(os.path.join(params.model_root,'pred_notNoneCCKS_triples.jsonl'),'w') as f:
+        if item['h']['tag'].startswith('nr') or \
+        item['t']['tag'].startswith('nr'):
+            continue
+        pred_triples_notNR+=[{'e1':item['h']['name'],
+                              'r':item['ccks_pred_label'],
+                              'e2':item['t']['name']}]
+    with open(os.path.join(params.model_root,
+                           'source_%s_pred_notNoneCCKS_triples.jsonl'%str(source_flag)),'w') as f:
         for item in pred_triples:
+            json.dump(item, f)
+            f.write("\n")
+    
+    with open(os.path.join(params.model_root,
+                           'source_%s_pred_notNoneCCKS_triples_notNR.jsonl'%str(source_flag)),'w') as f:
+        for item in pred_triples_notNR:
             json.dump(item, f)
             f.write("\n")
       
