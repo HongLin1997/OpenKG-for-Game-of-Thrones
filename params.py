@@ -176,14 +176,8 @@ max_grad_norm = FLAGS.max_grad_norm
 clip_value = FLAGS.clip_value
 
 # params for source encoder
-model_root = "%s_%s_snapshots/shareEncoder_%s/d_obj_%s(%s_%s_%s)"%(data_root.split("/")[1],
-                                                                   model_name, 
-                                                                   str(tgt_encoder_shared),
-                                                                   str(discriminator_objective),
-                                                                   str(alpha),
-                                                                   str(beta),
-                                                                   str(gamma))
-model_root = str(notransfer_flag)+"_notransfer_flag/"+ model_root
+model_root = "snapshots"
+
 checkpoints_pretrain = model_root +"/checkpoint_pretrain.pkl"
 checkpoints_adapt = model_root +"/checkpoint_adapt.pkl"
 checkpoints_shared = model_root +"/checkpoint.pkl"
