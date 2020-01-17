@@ -5,17 +5,16 @@ Created on Tue Dec 24 19:09:36 2019
 @author: admin
 """
 import os, json, pickle
-from fuzzywuzzy import fuzz
-from fuzzywuzzy import process
-from pyhanlp import *
+
+from pyhanlp import * 
 from itertools import combinations
+import random
 
-data_path = os.path.join(os.getcwd(), 'run_LH_code')
-raw_data_path = os.path.join(os.getcwd(), 'raw_data')
+data_path = os.path.join(os.getcwd(),'preprocessed_data')
+output_path = os.path.join(os.getcwd(),'datasets/GOT')
+raw_data_path = os.path.join(os.getcwd(),'raw_data')
 
-# stopwords为一个存储停用词的list
-with open(raw_data_path + '/stopwords/哈工大停用词表.txt', 'r',
-          encoding="utf-8") as f:
+with open(raw_data_path + '/stopwords/哈工大停用词表.txt','r', encoding="utf-8") as f:
     stopwords = [s.strip() for s in f.readlines()]
 stopwords = stopwords[0:263]
 stopwords.append('…')
@@ -46,12 +45,10 @@ with open(data_path + '/candidate_entity_replacement_list_v5.jsonl', 'r', encodi
 
 f.close()
 for lin in lines:
-
     lin = HanLP.convertToSimplifiedChinese(lin)
     if "盖瑞" in lin:
         print(lin)
     lin = json.loads(lin)
-
     if lin['s'].startswith('e:'):
         e1 = lin['s'][2:].replace('"', "")
     else:
@@ -79,9 +76,12 @@ for lin in lines:
 with open(data_path + '/preprocessed_data.jsonl', 'r',
           encoding="utf-8") as f:
     lines = f.readlines()
-corpus = []
+
+negative_corpus = []
+only_for_test = []
 all_nrs = set()
 positive_count = {}
+relatin2id={}
 for index, lin in enumerate(lines):
     if index % 10000 == 0:
         print('processing progress:', index, '/', len(lines))
@@ -101,27 +101,46 @@ for index, lin in enumerate(lines):
         filtered_tokens.append(tk)
         filtered_pos.append(pos)
         position += 1
-        if ((pos.startswith('nr') and len(tk) > 1) or
-                pos == 'true_entity' or pos == 'candidate_entity'):
+
+        if tk!='无' and ((pos.startswith('nr') and len(tk) > 1) or
+        pos == 'true_entity' or pos == 'candidate_entity'):
             nrs_in_sentence.add((tk, pos, position))
             all_nrs.add((tk, pos))
 
-    temp['filtered_tokens'] = filtered_tokens
+    temp['token'] = filtered_tokens
+
     temp['filtered_pos'] = filtered_pos
 
     entity_pairs = list(combinations(nrs_in_sentence, 2))
     for ent in entity_pairs:
-        ((e1, _, _), (e2, _, _)) = ent
+
+        ((e1, e1_tag, e1_pos), (e2, e2_tag, e2_pos)) = ent
+        if e1==e2:
+            continue
+
         relation = None
         if (e1, e2) in true_triples.keys():
             for r in true_triples.get((e1, e2)):
                 relation = r + '(e1,e2)'
                 temp = temp.copy()
                 temp['ents'] = ent
-                temp['relation'] = relation
-                if temp not in corpus:
-                    corpus += [temp]
-                    positive_count[relation] = positive_count.get(relation, 0) + 1
+
+                if relation not in relatin2id.keys():
+                    relatin2id[relation] = len(relatin2id)
+                temp['label'] = relatin2id[relation]
+                temp['h']={'name':e1, 'pos':[e1_pos, e1_pos+1], 'tag':e1_tag}
+                temp['t']={'name':e2, 'pos':[e2_pos, e2_pos+1], 'tag':e2_tag}
+                
+                if e1_tag.startswith('nr') or e2_tag.startswith('nr'):
+                    if temp not in only_for_test:
+                        only_for_test += [temp]
+                else:    
+                    if relation not in positive_count.keys():
+                        #corpus += [temp]
+                        positive_count[relation] = positive_count.get(relation, []) + [temp]
+                    elif temp not in positive_count.get(relation):
+                        positive_count[relation] = positive_count.get(relation, []) + [temp]
+                    
 
         # === cxy code: elif -> if===
         if (e2, e1) in true_triples.keys():
@@ -129,10 +148,22 @@ for index, lin in enumerate(lines):
                 relation = r + '(e2,e1)'
                 temp = temp.copy()
                 temp['ents'] = ent
-                temp['relation'] = relation
-                if temp not in corpus:
-                    corpus += [temp]
-                    positive_count[relation] = positive_count.get(relation, 0) + 1
+
+                if relation not in relatin2id.keys():
+                    relatin2id[relation] = len(relatin2id)
+                temp['label'] = relatin2id[relation]
+                temp['h']={'name':e2, 'pos':[e2_pos, e2_pos+1], 'tag':e2_tag}
+                temp['t']={'name':e1, 'pos':[e1_pos, e1_pos+1], 'tag':e1_tag}
+                if e1_tag.startswith('nr') or e2_tag.startswith('nr'):
+                    if temp not in only_for_test:
+                        only_for_test += [temp]
+                else:    
+                    if relation not in positive_count.keys():
+                        #corpus += [temp]
+                        positive_count[relation] = positive_count.get(relation, []) + [temp]
+                    elif temp not in positive_count.get(relation):
+                        positive_count[relation] = positive_count.get(relation, []) + [temp]
+                    
 
         # === cxy code: ===
         if relation:
@@ -146,10 +177,22 @@ for index, lin in enumerate(lines):
                 relation = r + '(e1,e2)'
                 temp = temp.copy()
                 temp['ents'] = ent
-                temp['relation'] = relation
-                if temp not in corpus:
-                    corpus += [temp]
-                    positive_count[relation] = positive_count.get(relation, 0) + 1
+
+                if relation not in relatin2id.keys():
+                    relatin2id[relation] = len(relatin2id)
+                temp['label'] = relatin2id[relation]
+                temp['h']={'name':e1, 'pos':[e1_pos, e1_pos+1], 'tag':e1_tag}
+                temp['t']={'name':e2, 'pos':[e2_pos, e2_pos+1], 'tag':e2_tag}
+                if e1_tag.startswith('nr') or e2_tag.startswith('nr'):
+                    if temp not in only_for_test:
+                        only_for_test += [temp]
+                else:    
+                    if relation not in positive_count.keys():
+                        #corpus += [temp]
+                        positive_count[relation] = positive_count.get(relation, []) + [temp]
+                    elif temp not in positive_count.get(relation):
+                        positive_count[relation] = positive_count.get(relation, []) + [temp]
+                    
 
         # === cxy code: elif -> if===
         if (e2, e1) in potential_triples.keys():
@@ -157,25 +200,89 @@ for index, lin in enumerate(lines):
                 relation = r + '(e2,e1)'
                 temp = temp.copy()
                 temp['ents'] = ent
-                temp['relation'] = relation
-                if temp not in corpus:
-                    corpus += [temp]
-                    positive_count[relation] = positive_count.get(relation, 0) + 1
 
+                if relation not in relatin2id.keys():
+                    relatin2id[relation] = len(relatin2id)
+                temp['label'] = relatin2id[relation]
+                temp['h']={'name':e2, 'pos':[e2_pos, e2_pos+1], 'tag':e2_tag}
+                temp['t']={'name':e1, 'pos':[e1_pos, e1_pos+1], 'tag':e1_tag}
+                if e1_tag.startswith('nr') or e2_tag.startswith('nr'):
+                    if temp not in only_for_test:
+                        only_for_test += [temp]
+                else:    
+                    if relation not in positive_count.keys():
+                        #corpus += [temp]
+                        positive_count[relation] = positive_count.get(relation, []) + [temp]
+                    elif temp not in positive_count.get(relation):
+                        positive_count[relation] = positive_count.get(relation, []) + [temp]
+                    
         else:
             temp = temp.copy()
             temp['ents'] = ent
-            temp['relation'] = relation
-            if temp not in corpus:
-                corpus += [temp]
+            if relation not in relatin2id.keys():
+                relatin2id[relation] = len(relatin2id)
+            temp['label'] = relatin2id[relation]
+            temp['h']={'name':e1, 'pos':[e1_pos, e1_pos+1], 'tag':e1_tag}
+            temp['t']={'name':e2, 'pos':[e2_pos, e2_pos+1], 'tag':e2_tag}
+            if e1_tag.startswith('nr') or e2_tag.startswith('nr'):
+                if temp not in only_for_test:
+                    only_for_test += [temp]
+            else:    
+                if temp not in negative_corpus:
+                    negative_corpus += [temp]
+                    #corpus += [temp]
 
+positive_corpus_train = []
+positive_corpus_dev = []
+positive_corpus_eval = []
+
+for c in positive_count.values():
+    random.shuffle(c)
+    positive_corpus_train += c[0:int(len(c)*0.7)]
+    positive_corpus_dev += c[int(len(c)*0.7):int(len(c)*0.8)]
+    positive_corpus_eval += c[int(len(c)*0.8):]
+
+random.shuffle(negative_corpus)
+random.shuffle(only_for_test)
+corpus_train = positive_corpus_train + \
+               negative_corpus[0:int(len(negative_corpus)*0.7)]
+corpus_dev = positive_corpus_dev + \
+             negative_corpus[int(len(negative_corpus)*0.7):int(len(negative_corpus)*0.8)]
+corpus_eval = positive_corpus_eval  + \
+              negative_corpus[int(len(negative_corpus)*0.8):] + \
+              only_for_test
+
+
+corpus = list(corpus_train) + list(corpus_dev) + list(corpus_eval)
 print(len(corpus))
-print(positive_count)
+print(len(only_for_test))
+print([(k,len(v)) for k,v in positive_count.items()])
 
-with open(data_path + '/tagged_corpus.jsonl', 'w', encoding='utf-8') as f:
+
+with open(output_path + '/corpus_train.jsonl', 'w', encoding='utf-8') as f:
+    for c in corpus_train:
+        json.dump(c, f)
+        f.write("\n")
+
+with open(output_path + '/corpus_dev.jsonl', 'w', encoding='utf-8') as f:
+    for c in corpus_dev:
+        json.dump(c, f)
+        f.write("\n")
+
+with open(output_path + '/corpus_eval.jsonl', 'w', encoding='utf-8') as f:
+    for c in corpus_eval:
+        json.dump(c, f)
+        f.write("\n")
+
+with open(output_path + '/tagged_corpus.jsonl', 'w', encoding='utf-8') as f:
     for c in corpus:
         json.dump(c, f)
         f.write("\n")
+
+
+with open(output_path + '/relatin2id.jsonl', 'w', encoding='utf-8') as f:
+    json.dump(relatin2id, f)
+        
 
 '''
 with open(data_path + '/supervise_data_v2.jsonl','r',encoding="utf-8") as f:
@@ -185,4 +292,6 @@ for lin in lines:
     temp =json.loads(lin)
     if temp not in supervise_data_v2:
         supervise_data_v2+=[temp]
+
 '''
+

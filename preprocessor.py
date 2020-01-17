@@ -289,10 +289,10 @@ class Preprocessor():
 def main():   
     os.chdir(os.getcwd())
     data_path = os.path.join(os.getcwd(),'raw_data')
-    output_path = os.path.join(os.getcwd(),'run_LH_code')
+    output_path = os.path.join(os.getcwd(),'preprocessed_data')
 
     #characters = pickle.load(open(output_path + '/characters.pkl','rb'))
-
+    
     with open(output_path +'/literal_vocabulary','r', encoding='utf-8') as f:
         lines = f.readlines()
         characters = [i.strip().split(":")[1] for i in lines]
@@ -316,7 +316,7 @@ def main():
         os.mkdir(output_path)
         
     parser = MyHTMLParser()
-    
+
     sentence_min_length = 5
     proc = Preprocessor(parser, sentence_min_length) # solr starts by default:
     
