@@ -176,7 +176,7 @@ max_grad_norm = FLAGS.max_grad_norm
 clip_value = FLAGS.clip_value
 
 # params for source encoder
-model_root = "snapshots"
+model_root = "snapshot"
 
 checkpoints_pretrain = model_root +"/checkpoint_pretrain.pkl"
 checkpoints_adapt = model_root +"/checkpoint_adapt.pkl"
