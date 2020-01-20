@@ -5,6 +5,8 @@ A python project for creating an openKG for Game of Thrones.
 
 ## Github访问链接
 
+https://github.com/fishfishfishfishfish/OpenKG-for-Game-of-Thrones
+
 ## 项目流程
 本项目计划构建小说《冰与火之歌》（A song of ice and fire）中的人物、家族、城堡的知识图谱。我们先从维基网站上抓取相关的三元组，构成初步的知识图谱。由于网页上的文本存在一定的错误、不对应，我们进行了一些数据清洗。同时网页上的实体关系并不完整，我们通过推理的方式将图谱中可以由规则补全的部分进行补全。之后我们使用关系抽取的方式，从小说原文中学习出关系抽取的模型，并用该模型抽取出原来图谱中没有的实体关系。最后我们使用网页的方式展示整个知识图谱。
 
