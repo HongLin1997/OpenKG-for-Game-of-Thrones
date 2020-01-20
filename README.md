@@ -3,6 +3,8 @@ A python project for creating an openKG for Game of Thrones.
 
 ## OpenKG访问链接
 
+http://openkg.cn/dataset/game-of-thrones
+
 ## Github访问链接
 
 https://github.com/fishfishfishfishfish/OpenKG-for-Game-of-Thrones
