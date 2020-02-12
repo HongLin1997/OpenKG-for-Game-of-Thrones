@@ -5,6 +5,7 @@ Created on Tue Dec 24 19:09:36 2019
 @author: admin
 """
 import os, json, pickle
+
 from pyhanlp import * 
 from itertools import combinations
 import random
@@ -13,8 +14,7 @@ data_path = os.path.join(os.getcwd(),'preprocessed_data')
 output_path = os.path.join(os.getcwd(),'datasets/GOT')
 raw_data_path = os.path.join(os.getcwd(),'raw_data')
 
-with open(raw_data_path + '/stopwords/哈工大停用词表.txt','r',
-          encoding="utf-8") as f:
+with open(raw_data_path + '/stopwords/哈工大停用词表.txt','r', encoding="utf-8") as f:
     stopwords = [s.strip() for s in f.readlines()]
 stopwords = stopwords[0:263]
 stopwords.append('…')
@@ -45,12 +45,10 @@ with open(data_path + '/candidate_entity_replacement_list_v5.jsonl', 'r', encodi
 
 f.close()
 for lin in lines:
-    
     lin = HanLP.convertToSimplifiedChinese(lin)
     if "盖瑞" in lin:
         print(lin)
     lin = json.loads(lin)
-    
     if lin['s'].startswith('e:'):
         e1 = lin['s'][2:].replace('"', "")
     else:
@@ -73,11 +71,12 @@ for lin in lines:
             continue
         potential_triples[(e1, ce)] = potential_triples.get((e1, ce), []) + [lin['r'][2:].strip()]
 
+
 # 到句子里寻找能够匹配三元组的句子
 with open(data_path + '/preprocessed_data.jsonl', 'r',
           encoding="utf-8") as f:
     lines = f.readlines()
-    
+
 negative_corpus = []
 only_for_test = []
 all_nrs = set()
@@ -102,25 +101,30 @@ for index, lin in enumerate(lines):
         filtered_tokens.append(tk)
         filtered_pos.append(pos)
         position += 1
+
         if tk!='无' and ((pos.startswith('nr') and len(tk) > 1) or
         pos == 'true_entity' or pos == 'candidate_entity'):
             nrs_in_sentence.add((tk, pos, position))
             all_nrs.add((tk, pos))
 
     temp['token'] = filtered_tokens
+
     temp['filtered_pos'] = filtered_pos
 
     entity_pairs = list(combinations(nrs_in_sentence, 2))
     for ent in entity_pairs:
+
         ((e1, e1_tag, e1_pos), (e2, e2_tag, e2_pos)) = ent
         if e1==e2:
             continue
+
         relation = None
         if (e1, e2) in true_triples.keys():
             for r in true_triples.get((e1, e2)):
                 relation = r + '(e1,e2)'
                 temp = temp.copy()
                 temp['ents'] = ent
+
                 if relation not in relatin2id.keys():
                     relatin2id[relation] = len(relatin2id)
                 temp['label'] = relatin2id[relation]
@@ -137,12 +141,14 @@ for index, lin in enumerate(lines):
                     elif temp not in positive_count.get(relation):
                         positive_count[relation] = positive_count.get(relation, []) + [temp]
                     
+
         # === cxy code: elif -> if===
         if (e2, e1) in true_triples.keys():
             for r in true_triples.get((e2, e1)):
                 relation = r + '(e2,e1)'
                 temp = temp.copy()
                 temp['ents'] = ent
+
                 if relation not in relatin2id.keys():
                     relatin2id[relation] = len(relatin2id)
                 temp['label'] = relatin2id[relation]
@@ -158,6 +164,7 @@ for index, lin in enumerate(lines):
                     elif temp not in positive_count.get(relation):
                         positive_count[relation] = positive_count.get(relation, []) + [temp]
                     
+
         # === cxy code: ===
         if relation:
             continue
@@ -170,6 +177,7 @@ for index, lin in enumerate(lines):
                 relation = r + '(e1,e2)'
                 temp = temp.copy()
                 temp['ents'] = ent
+
                 if relation not in relatin2id.keys():
                     relatin2id[relation] = len(relatin2id)
                 temp['label'] = relatin2id[relation]
@@ -185,12 +193,14 @@ for index, lin in enumerate(lines):
                     elif temp not in positive_count.get(relation):
                         positive_count[relation] = positive_count.get(relation, []) + [temp]
                     
+
         # === cxy code: elif -> if===
         if (e2, e1) in potential_triples.keys():
             for r in potential_triples.get((e2, e1)):
                 relation = r + '(e2,e1)'
                 temp = temp.copy()
                 temp['ents'] = ent
+
                 if relation not in relatin2id.keys():
                     relatin2id[relation] = len(relatin2id)
                 temp['label'] = relatin2id[relation]
@@ -269,9 +279,11 @@ with open(output_path + '/tagged_corpus.jsonl', 'w', encoding='utf-8') as f:
         json.dump(c, f)
         f.write("\n")
 
+
 with open(output_path + '/relatin2id.jsonl', 'w', encoding='utf-8') as f:
     json.dump(relatin2id, f)
         
+
 '''
 with open(data_path + '/supervise_data_v2.jsonl','r',encoding="utf-8") as f:
     lines = f.readlines()     
@@ -280,4 +292,6 @@ for lin in lines:
     temp =json.loads(lin)
     if temp not in supervise_data_v2:
         supervise_data_v2+=[temp]
+
 '''
+

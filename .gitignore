@@ -130,3 +130,11 @@ dmypy.json
 
 # jetbrain
 .idea/
+
+# data
+*.csv
+*.jsonl
+*.ttl
+*.pkl
+*index
+triples/

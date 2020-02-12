@@ -4,6 +4,7 @@ Created on Sun Jan  5 19:58:34 2020
 
 @author: admin
 """
+
 import os,json
 import pandas as pd
 import random
@@ -14,6 +15,7 @@ out_path= os.path.join(os.getcwd(),'deepke-master','data','origin')
 with open(raw_data_path + '/train_data.json','r',encoding="utf-8") as f:
     lines = f.readlines()
 train_df=[]    
+
 for lin in lines:
     lin = json.loads(lin)
     sentence = lin['text'].lower()
@@ -24,6 +26,7 @@ for lin in lines:
         tail = temp['object'].lower()
         head_offset = sentence.index(head) if head in sentence else -1
         head_idx = tokens.index(head) if head in tokens else -1
+
         if head_idx!=-1:
             tokens[head_idx]=' head '
         head_type = temp['subject_type']
@@ -61,6 +64,7 @@ for lin in lines[0:int(len(lines)/2)]:
         tail = temp['object'].lower()
         head_offset = sentence.index(head) if head in sentence else -1
         head_idx = tokens.index(head) if head in tokens else -1
+
         if head_idx!=-1:
             tokens[head_idx]=' head '
         head_type = temp['subject_type']

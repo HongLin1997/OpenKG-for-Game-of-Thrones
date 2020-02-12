@@ -316,7 +316,7 @@ def main():
         os.mkdir(output_path)
         
     parser = MyHTMLParser()
-    
+
     sentence_min_length = 5
     proc = Preprocessor(parser, sentence_min_length) # solr starts by default:
     

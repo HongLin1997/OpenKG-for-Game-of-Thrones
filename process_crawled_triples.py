@@ -7,6 +7,7 @@ Created on Tue Dec 24 19:09:36 2019
 import os, json, pickle
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
+
 from pyhanlp import * 
 
 NLPTokenizer = JClass('com.hankcs.hanlp.tokenizer.NLPTokenizer')
@@ -92,7 +93,7 @@ else:
                 entities.add('candidate_entity:'+ce)
                 id_entities.add(('candidate_entity:'+ce, e2_id))
             
-            
+
         relations.add(lin['r'][2:])
 
 '''    
@@ -112,6 +113,7 @@ for id_, cs in id_entities:
             id_entities_.append((id_, c_))
             entities.add(c_)
 '''
+
 with open(data_path +'/literal_vocabulary','w', encoding='utf-8') as f:
     for ent in entities:
         f.write(ent+"\n")

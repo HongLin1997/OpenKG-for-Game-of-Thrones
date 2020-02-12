@@ -3,7 +3,11 @@ A python project for creating an openKG for Game of Thrones.
 
 ## OpenKG访问链接
 
+http://openkg.cn/dataset/game-of-thrones
+
 ## Github访问链接
+
+https://github.com/fishfishfishfishfish/OpenKG-for-Game-of-Thrones
 
 ## 项目流程
 本项目计划构建小说《冰与火之歌》（A song of ice and fire）中的人物、家族、城堡的知识图谱。我们先从维基网站上抓取相关的三元组，构成初步的知识图谱。由于网页上的文本存在一定的错误、不对应，我们进行了一些数据清洗。同时网页上的实体关系并不完整，我们通过推理的方式将图谱中可以由规则补全的部分进行补全。之后我们使用关系抽取的方式，从小说原文中学习出关系抽取的模型，并用该模型抽取出原来图谱中没有的实体关系。最后我们使用网页的方式展示整个知识图谱。
@@ -11,6 +15,13 @@ A python project for creating an openKG for Game of Thrones.
 主要包括三部分工作：（1）数据爬虫获取（2）数据预处理与关系抽取（3）关系逻辑推理与知识图谱可视化；下面各部分工作介绍如下：
 
 ### 数据获取
+
+> `triple_crawler.py`中的代码负责数据抓取以及清理
+>
+> `entity_linking.py`中的代码负责寻找出小说文本中的实体
+>
+> `tail matching.py`中的代码负责实体消减部分的工作
+
 #### 文件描述
 
 `asoiaf.ttl`：清洗后的三元组文件，这里面的三元组可以认为都是对的
@@ -66,8 +77,6 @@ e:提利昂·兰尼斯特	r:type	"character".
 e:提利昂·兰尼斯特	r:名	"提利昂".
 e:提利昂·兰尼斯特	r:姓	"兰尼斯特".
 ```
-
-
 
 #### 三元组的清洗
 
@@ -143,8 +152,10 @@ e:提利昂·兰尼斯特	r:姓	"兰尼斯特".
 
 实体消减后主要用于输入到关系抽取阶段中。
 
+> 
 
 ### 数据预处理与关系抽取
+
 基于网络爬虫获取到的人物实体、家族实体、地点实体、以及相关实体之间的绝对正确的三元组关系等数据，我们在该部分对所获取的数据进行数据预处理，转化为可以提供给模型进行学习的训练集，测试集，验证集；并应用models文件夹内的bert.py以及bertEntity.py两个文件的深度神经网络模型对相应的数据集进行关系抽取的训练、验证与预测。
 
 #### 小说文本转化为可训练的样本
@@ -221,13 +232,15 @@ Windows 下使用 java 与 jena 包，java 版本为 12.0.2，jena 版本为 3.1
 
 ### 知识图谱的可视化
 
+> `entity_clustering.py`中的文件负责对知识图谱中的实体进行聚类，以及page rank的计算
+
 先使用pagerank对图谱中的实体网络进行节点重要性的计算，得到每个实体的重要性。同时对实体网络进行谱聚类，得到实体的分类。
 
 使用javascript将图谱用网页的形式展示。图中圆表示实体，圆的大小表示实体pagerank得到的重要性程度，圆的颜色是谱聚类后实体的分类。
 
 下图是对所有家族实体进行pagerank以及谱聚类后的结果，可以进入`graphs_json\house_graph`文件夹后，在当前文件夹运行`python JS_graph.py`，之后访问`http://localhost:8000`可打开网页查看图谱。鼠标停留在圆上方可查看实体名称。
 
-<img src="img/image-20200117140441179.png" alt="image-20200117140441179" width="600" /> 、
+<img src="img/image-20200117140441179.png" alt="image-20200117140441179" width="600" /> <img src="img/house-animate.gif" alt="image-20200117140441179" width="600" /> 
 
 下图是对所有城堡实体进行pagerank以及谱聚类后的结果，可以进入`graphs_json\castle_graph`文件夹后，在当前文件夹运行`python JS_graph.py`，之后访问`http://localhost:8000`可打开网页查看图谱。鼠标停留在圆上方可查看实体名称。从图中可以看到，小说中各个城堡之间是没有直接链接的边的，城堡之间一般不会发生关系，都是通过家族或人物间接联系。
 
